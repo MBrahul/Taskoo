@@ -1,16 +1,21 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:date_format/date_format.dart';
 import 'package:flutter/material.dart';
 import 'package:taskoo/custom%20widgets/task.dart';
+import 'package:taskoo/screens/search/search.dart';
 
 class Home extends StatefulWidget {
   String userName;
-  List allTasks = <Map>[];
   final Stream<QuerySnapshot> _todaysTasksStream;
-  var done;
-  var pending;
+  var uid;
+  var allDone;
+  var allPending;
+  String imageUrl;
+  final Function() updateParent;
 
-  Home(this.userName, this._todaysTasksStream, this.done, this.pending,
+  Home(this.userName, this._todaysTasksStream, this.uid, this.allDone,
+      this.allPending, this.imageUrl, this.updateParent,
       {super.key}) {
     //
   }
@@ -19,15 +24,17 @@ class Home extends StatefulWidget {
   State<Home> createState() => _HomeState();
 }
 
-class _HomeState extends State<Home> {
-  List todaysTasks = <Map>[];
+class _HomeState extends State<Home> with TickerProviderStateMixin {
+  double angle = 0;
+  TextEditingController title = TextEditingController();
+  late Stream<QuerySnapshot> _searchedTasksStream;
 
   Widget taskListView() {
     return StreamBuilder<QuerySnapshot>(
       stream: widget._todaysTasksStream,
       builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
         if (snapshot.hasError) {
-          print(snapshot.error);
+          //print(snapshot.error);
           return const Center(
               child: Text(
             'Something went wrong',
@@ -51,40 +58,49 @@ class _HomeState extends State<Home> {
           );
         }
         // print(snapshot.data!.docs);
-        return ListView(
-          scrollDirection: Axis.horizontal,
-          children: snapshot.data!.docs
-              .map((DocumentSnapshot document) {
-                Map<String, dynamic> data =
-                    document.data()! as Map<String, dynamic>;
-                // get id for deleting task
-                var id = document.id;
-                // print(id);
-                return Row(
-                  children: [
-                    const SizedBox(
-                      width: 10,
-                    ),
-                    Task(
-                        data["title"],
-                        data["description"],
-                        MediaQuery.of(context).size.width / 1.20,
-                        data["time"],
-                        data["date"],
-                        id,
-                        data["done"],
-                        context),
-                    const SizedBox(
-                      width: 15,
-                    )
-                  ],
-                );
-              })
-              .toList()
-              .cast(),
+        return SizedBox(
+          height: 160,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: snapshot.data!.docs
+                .map((DocumentSnapshot document) {
+                  Map<String, dynamic> data =
+                      document.data()! as Map<String, dynamic>;
+                  // get id for deleting task
+                  var id = document.id;
+                  // print(id);
+                  return Row(
+                    children: [
+                      const SizedBox(
+                        width: 10,
+                      ),
+                      Task(
+                          data["title"],
+                          data["description"],
+                          MediaQuery.of(context).size.width / 1.30,
+                          data["time"],
+                          data["date"],
+                          id,
+                          data["done"],
+                          context,
+                          widget.updateParent),
+                      const SizedBox(
+                        width: 15,
+                      )
+                    ],
+                  );
+                })
+                .toList()
+                .cast(),
+          ),
         );
       },
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
   }
 
   @override
@@ -115,25 +131,25 @@ class _HomeState extends State<Home> {
                         height: 6,
                       ),
                       Text(
-                        "${widget.pending} tasks pending",
+                        "${widget.allPending} tasks pending",
                         style: const TextStyle(
                             color: Color.fromARGB(255, 255, 93, 52)),
                       )
                     ],
                   ),
                   Container(
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(
-                            color: const Color.fromARGB(255, 255, 93, 52))),
-                    child: const CircleAvatar(
-                      backgroundColor: Color.fromARGB(255, 35, 39, 49),
-                      radius: 27.00,
-                      backgroundImage: NetworkImage(
-                        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQPDxExA79GMgWNjwLYOMbd6eLMqwTJCtHd3_EAKm-9pitWIl78GvX_QisowoXPLfmJ6GT6nJ8zODc&usqp=CAU&ec=48600113",
-                      ),
-                    ),
-                  )
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
+                            color: Colors.white70,
+                          )),
+                      child: CircleAvatar(
+                        backgroundColor: const Color.fromARGB(255, 35, 39, 49),
+                        radius: 27.00,
+                        backgroundImage: NetworkImage(widget.imageUrl.isNotEmpty
+                            ? widget.imageUrl
+                            : "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRYRWjVT2Id5bG0YsYFDi8AGdLlu3KwKiolhmEr8yDmwg&s"),
+                      ))
                 ],
               ),
               const SizedBox(
@@ -144,16 +160,36 @@ class _HomeState extends State<Home> {
                 children: [
                   Expanded(
                     child: TextField(
+                      controller: title,
                       cursorColor: Colors.white30,
                       style: const TextStyle(
                           fontSize: 20,
                           color: Colors.white70,
                           fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
-                          prefixIcon: const Icon(
-                            Icons.search_rounded,
-                            color: Color.fromARGB(255, 255, 93, 52),
-                            size: 30,
+                          suffixIcon: InkWell(
+                            onTap: () async {
+                              // logic for get searched tasks;
+                              _searchedTasksStream = FirebaseFirestore.instance
+                                  .collection('tasks')
+                                  .where('uid',
+                                      isEqualTo: widget.uid.toString())
+                                  .where("title",
+                                      isEqualTo: title.text.toString())
+                                  .snapshots();
+
+                              Navigator.push(context,
+                                  MaterialPageRoute(builder: (context) {
+                                return Search(title.text, _searchedTasksStream,
+                                    widget.updateParent);
+                              }));
+                              // ignore: use_build_context_synchronously
+                            },
+                            child: const Icon(
+                              Icons.search_rounded,
+                              color: Color.fromARGB(255, 255, 93, 52),
+                              size: 30,
+                            ),
                           ),
                           hintText: "Search by title ....",
                           hintStyle: const TextStyle(
@@ -214,7 +250,7 @@ class _HomeState extends State<Home> {
                                     fontWeight: FontWeight.w500),
                               ),
                               Text(
-                                (widget.done + widget.pending).toString(),
+                                (widget.allDone + widget.allPending).toString(),
                                 style: const TextStyle(
                                     fontSize: 50, color: Colors.white54),
                               )
@@ -241,7 +277,7 @@ class _HomeState extends State<Home> {
                                     fontWeight: FontWeight.w500),
                               ),
                               Text(
-                                widget.done.toString(),
+                                widget.allDone.toString(),
                                 style: const TextStyle(
                                     fontSize: 50, color: Colors.white54),
                               )
@@ -273,7 +309,7 @@ class _HomeState extends State<Home> {
                                     fontWeight: FontWeight.w500),
                               ),
                               Text(
-                                widget.pending.toString(),
+                                widget.allPending.toString(),
                                 style: const TextStyle(
                                     fontSize: 50, color: Colors.white54),
                               )
@@ -301,7 +337,7 @@ class _HomeState extends State<Home> {
               const SizedBox(
                 height: 25,
               ),
-              SizedBox(height: 180, child: taskListView())
+              taskListView()
             ],
           ),
         ),

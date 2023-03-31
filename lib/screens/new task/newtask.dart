@@ -1,19 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:date_format/date_format.dart';
 import 'package:flutter/services.dart';
 
+// ignore: must_be_immutable
 class NewTask extends StatefulWidget {
+  final Function() updateParent;
   var uid;
-  NewTask(this.uid);
+  NewTask(this.uid, this.updateParent, {super.key});
   @override
   State<NewTask> createState() => _NewTaskState(uid);
 }
 
 class _NewTaskState extends State<NewTask> {
   var uid;
-  _NewTaskState(this.uid);
+  _NewTaskState(
+    this.uid,
+  );
   TextEditingController title = TextEditingController();
   TextEditingController description = TextEditingController();
   DateTime selectedDate = DateTime.now();
@@ -75,6 +78,7 @@ class _NewTaskState extends State<NewTask> {
         Navigator.of(context).pop();
       });
     }
+    widget.updateParent();
     print(newDate);
   }
 
@@ -126,10 +130,16 @@ class _NewTaskState extends State<NewTask> {
               height: 5,
             ),
             TextField(
+              inputFormatters: [
+                // set description text limit at 150 words
+                LengthLimitingTextInputFormatter(50),
+              ],
               controller: title,
               cursorColor: Colors.white12,
               style: const TextStyle(color: Colors.white, fontSize: 20),
               decoration: const InputDecoration(
+                  hintText: "maximum 50 characters",
+                  hintStyle: TextStyle(color: Colors.white30, fontSize: 17),
                   enabledBorder: UnderlineInputBorder(
                       borderSide: BorderSide(color: Colors.white60)),
                   focusedBorder: UnderlineInputBorder(

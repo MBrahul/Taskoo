@@ -2,68 +2,87 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 Widget Task(String title, String description, double width, String time,
-    String date, var id, bool done, var context) {
+    String date, var id, bool done, var context, final Function() updateTask) {
   var parsedDate = DateTime.parse(date);
+  void deleteNote(id) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(id)
+          .delete()
+          .then((value) {
+        // print("task deleted successfully");
+      }).catchError((e) {
+        // print(e);
+      });
+      updateTask();
+    } catch (e) {}
+  }
 
   final date2 = DateTime.now();
   final dayRemaining = parsedDate.difference(date2).inDays;
   return InkWell(
     onTap: () {
       // print("clicked on task");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        dismissDirection: DismissDirection.down,
-        content: Stack(children: [
-          Container(
-            // margin:
-            // EdgeInsets.only(top: MediaQuery.of(context).size.height - 400),
-            height: 200,
-            width: MediaQuery.of(context).size.width / 1.1,
-            decoration: BoxDecoration(
+      if (description.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          dismissDirection: DismissDirection.down,
+          content: Stack(children: [
+            Container(
+              height: 200,
+              width: MediaQuery.of(context).size.width,
+              decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
-                color: const Color.fromARGB(255, 247, 85, 73)),
-            child: Padding(
-              padding: const EdgeInsets.all(15.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Description",
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                    softWrap: true,
-                    style: TextStyle(
-                        fontSize: 22,
-                        color: Colors.black,
-                        fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(
-                    height: 5,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 20.0),
-                    child: Text(
-                      description.length >= 149
-                          ? '${description.substring(0, 150)}..'
-                          : description,
-                      style: const TextStyle(fontSize: 18, color: Colors.black),
+                color: const Color.fromARGB(255, 35, 39, 49),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(15.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Description",
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: true,
+                      style: TextStyle(
+                          fontSize: 22,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500),
                     ),
-                  )
-                ],
+                    const SizedBox(
+                      height: 5,
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 20.0),
+                        child: Text(
+                          description.length >= 149
+                              ? '${description.substring(0, 150)}..'
+                              : description,
+                          style: const TextStyle(
+                              fontSize: 18, color: Colors.white70),
+                        ),
+                      ),
+                    )
+                  ],
+                ),
               ),
             ),
-          ),
-          const Positioned(
-              right: 10,
-              top: 80,
-              child: Icon(
-                Icons.arrow_downward_sharp,
-                size: 40,
-              ))
-        ]),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.transparent,
-      ));
+            const Positioned(
+                right: 10,
+                top: 80,
+                child: Icon(
+                  Icons.arrow_downward_sharp,
+                  size: 40,
+                  color: Color.fromARGB(255, 255, 93, 52),
+                ))
+          ]),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+        ));
+      }
     },
     child: Container(
       width: width,
@@ -81,8 +100,7 @@ Widget Task(String title, String description, double width, String time,
               children: [
                 Expanded(
                   child: Text(
-                    // title.length > 20 ? "${title.substring(0, 20)}.." : title,
-                    title,
+                    title.length > 20 ? "${title.substring(0, 20)}.." : title,
                     style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -133,20 +151,10 @@ Widget Task(String title, String description, double width, String time,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       IconButton(
-                          onPressed: () async {
+                          onPressed: () {
                             //delete the task
                             // print("deleting data with id $id");
-                            try {
-                              await FirebaseFirestore.instance
-                                  .collection('tasks')
-                                  .doc(id)
-                                  .delete()
-                                  .then((value) {
-                                // print("task deleted successfully");
-                              }).catchError((e) {
-                                // print(e);
-                              });
-                            } catch (e) {}
+                            deleteNote(id);
                           },
                           icon: const Icon(
                             Icons.delete_forever,
@@ -169,6 +177,7 @@ Widget Task(String title, String description, double width, String time,
                               }).then((value) {
                                 // print("Task updated successfully");
                               });
+                              updateTask();
                             } catch (e) {}
                           },
                           icon: const Icon(

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:date_format/date_format.dart';
 import 'package:flutter/material.dart';
@@ -21,11 +22,12 @@ class _MainHomeState extends State<MainHome> {
   var allDone = 0;
   var allPending = 0;
   var pending = 0;
+  String userDocId = "";
+  String imageUrl = "";
 
   //date stream for tasks to get real time update
   late Stream<QuerySnapshot> _tasksStream;
   late Stream<QuerySnapshot> _todaysTasksStream;
-  //late Stream<QuerySnapshot> _allTasksStream;
   DateTime todaysDate = DateTime.now();
   DateTime selectedDate =
       DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
@@ -40,13 +42,15 @@ class _MainHomeState extends State<MainHome> {
     setState(() {});
   }
 
-  getuserName() async {
+  getuserInfo() async {
     await FirebaseFirestore.instance
         .collection("users")
         .where('userId', isEqualTo: uid)
         .get()
         .then((value) {
+      userDocId = value.docs[0].id;
       userName = value.docs[0].data()["userName"].toString().capitalize();
+      imageUrl = value.docs[0].data()["imageUrl"].toString();
       setState(() {});
     });
     // get done review tasks numbers
@@ -73,26 +77,6 @@ class _MainHomeState extends State<MainHome> {
   }
 
 //method for get all pending tasks
-  getAllTasks() async {
-    await FirebaseFirestore.instance
-        .collection("tasks")
-        .where('uid', isEqualTo: uid)
-        .get()
-        .then((value) {
-      allTasks = value.docs;
-      // fine done and pending tasks numbers
-      for (var task in allTasks) {
-        if (task["done"]) {
-          allDone++;
-        } else {
-          allPending++;
-        }
-      }
-    });
-
-    // update on screen
-    setState(() {});
-  }
 
   updateTaskStream(date) async {
     // print('in getSelecteddate tesk');
@@ -142,13 +126,62 @@ class _MainHomeState extends State<MainHome> {
     });
   }
 
+  checkInternet() async {
+    bool internet = false;
+    try {
+      final result = await InternetAddress.lookup('example.com');
+      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+        // print('connected');
+        internet = true;
+      }
+    } on SocketException catch (_) {
+      //  print('not connected');
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          // backgroundColor: const Color.fromARGB(255, 35, 39, 49),
+          title: const Text("Taskoo"),
+          content: const Text("You Are Offline"),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+              },
+              child: Container(
+                // color: const Color.fromARGB(255, 35, 39, 49),
+                padding: const EdgeInsets.all(14),
+                child: const Text("okay"),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  getTaskInfo() async {
+    allDone = 0;
+    allPending = 0;
+    await FirebaseFirestore.instance
+        .collection("tasks")
+        .where('uid', isEqualTo: widget.uid)
+        .get()
+        .then((value) {
+      // fine done and pending tasks numbers
+      for (var task in value.docs) {
+        if (task["done"]) {
+          allDone++;
+        } else {
+          allPending++;
+        }
+      }
+    });
+    // update on screen
+    setState(() {});
+  }
+
   @override
   void initState() {
-    // _allTasksStream = FirebaseFirestore.instance
-    //     .collection('tasks')
-    //     .where('uid', isEqualTo: uid)
-    //     .snapshots();
-
     // set dataStream for selected date tasks
     _tasksStream = FirebaseFirestore.instance
         .collection('tasks')
@@ -170,25 +203,38 @@ class _MainHomeState extends State<MainHome> {
     //this is for home
     getSelectedTasks(
         DateTime(todaysDate.year, todaysDate.month, todaysDate.day));
-    getuserName();
-    getAllTasks();
+    getuserInfo();
     getTodaysTasks();
-
+    checkInternet();
+    getTaskInfo();
     super.initState();
   }
 
   // ignore: non_constant_identifier_names
   Widget Body() {
     if (selectedIndex == 0) {
-      return Home(userName, _todaysTasksStream, allDone, allPending);
+      return Home(
+          userName, _todaysTasksStream, uid, allDone, allPending, imageUrl, () {
+        getTaskInfo();
+      });
     } else if (selectedIndex == 1) {
-      return Tasks(_tasksStream);
+      return Tasks(_tasksStream, () {
+        getTaskInfo();
+      });
     } else if (selectedIndex == 2) {
-      return NewTask(uid);
+      return NewTask(uid, () {
+        getTaskInfo();
+      });
     } else if (selectedIndex == 3) {
-      return Profile(userName, allDone, allPending);
+      return Profile(userName, imageUrl, userDocId, allDone, allPending, () {
+        getuserInfo();
+        setState(() {});
+      });
     } else {
-      return Home(userName, _todaysTasksStream, allDone, allPending);
+      return Home(
+          userName, _todaysTasksStream, uid, allDone, allPending, imageUrl, () {
+        getTaskInfo();
+      });
     }
   }
 
@@ -197,7 +243,7 @@ class _MainHomeState extends State<MainHome> {
     return Scaffold(
       appBar: selectedIndex == 1
           ? AppBar(
-              toolbarHeight: 270,
+              toolbarHeight: 240,
               title: Column(
                 children: [
                   Row(
@@ -225,7 +271,7 @@ class _MainHomeState extends State<MainHome> {
                           Text(
                             formatDate(selectedDate, [MM, ' ', dd]).toString(),
                             style: const TextStyle(
-                                fontSize: 26, fontWeight: FontWeight.bold),
+                                fontSize: 23, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(
                             height: 10,
@@ -235,6 +281,7 @@ class _MainHomeState extends State<MainHome> {
                                 ? "$pending tasks pending"
                                 : "$pending task pending",
                             style: const TextStyle(
+                                fontSize: 18,
                                 color: Colors.white60,
                                 fontWeight: FontWeight.w300),
                           )
@@ -249,13 +296,13 @@ class _MainHomeState extends State<MainHome> {
                         child: const Icon(
                           Icons.calendar_month_rounded,
                           color: Colors.white,
-                          size: 30,
+                          size: 26,
                         ),
                       )
                     ],
                   ),
                   const SizedBox(
-                    height: 20,
+                    height: 15,
                   ),
                   CalendarTimeline(
                     initialDate: selectedDate,
@@ -294,10 +341,6 @@ class _MainHomeState extends State<MainHome> {
               icon: Icon(Icons.add_comment_sharp), label: "New Task"),
           BottomNavigationBarItem(
               icon: Icon(Icons.account_circle), label: "Account"),
-          // BottomNavigationBarItem(
-          //   icon: Icon(Icons.notifications),
-          //   label: "Notifications",
-          // ),
         ],
       ),
     );

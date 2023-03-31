@@ -3,46 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:taskoo/screens/auth/login.dart';
 import 'package:taskoo/screens/home/mainHome.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:taskoo/custom%20widgets/snackbar.dart';
 
 class SignUp extends StatefulWidget {
+  const SignUp({super.key});
+
   @override
   State<SignUp> createState() => _SignUpState();
-}
-
-snackBar(String msg, context) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-    dismissDirection: DismissDirection.up,
-    duration: const Duration(seconds: 2),
-    content: Container(
-      margin: EdgeInsets.only(bottom: MediaQuery.of(context).size.height - 195),
-      height: 100,
-      decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: const Color.fromARGB(255, 255, 93, 52)),
-      child: Padding(
-        padding: const EdgeInsets.all(15.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Opps..!",
-              style: TextStyle(fontSize: 20),
-            ),
-            const SizedBox(
-              height: 5,
-            ),
-            Text(
-              msg,
-              style: const TextStyle(fontSize: 18),
-            )
-          ],
-        ),
-      ),
-    ),
-    behavior: SnackBarBehavior.floating,
-    backgroundColor: Colors.transparent,
-  ));
 }
 
 class _SignUpState extends State<SignUp> {
@@ -52,7 +19,7 @@ class _SignUpState extends State<SignUp> {
 
   CollectionReference users = FirebaseFirestore.instance.collection("users");
 
-  Future signUp() async {
+  signUp() async {
     showDialog(
         context: context,
         builder: (context) {
@@ -69,8 +36,11 @@ class _SignUpState extends State<SignUp> {
       )
           .then((value) {
         // save username in user collection
-        users
-            .add({"userId": value.user!.uid, "userName": name.text.toString()});
+        users.add({
+          "userId": value.user!.uid,
+          "userName": name.text.toString(),
+          "imageUrl": ""
+        });
         // pop the dialog
         Navigator.of(context).pop();
 
@@ -85,9 +55,9 @@ class _SignUpState extends State<SignUp> {
       // pop the dialog
       Navigator.of(context).pop();
       if (e.code == 'weak-password') {
-        snackBar("Choose A Strong password", context);
+        snackbar("Choose A Strong password", context);
       } else if (e.code == 'email-already-in-use') {
-        snackBar("Account already exists", context);
+        snackbar("Account already exists", context);
         print('The account already exists for that email.');
       }
     } catch (e) {

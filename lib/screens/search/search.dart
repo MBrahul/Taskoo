@@ -1,22 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:date_format/date_format.dart';
 import 'package:flutter/material.dart';
 import 'package:taskoo/custom%20widgets/task.dart';
 
-class Tasks extends StatefulWidget {
-  final Stream<QuerySnapshot> _tasksStream;
+class Search extends StatelessWidget {
+  String title;
+  List searchedTasks = [];
   final Function() updateParent;
-  Tasks(this._tasksStream, this.updateParent, {super.key});
-  @override
-  State<Tasks> createState() => _TasksState();
-}
-
-class _TasksState extends State<Tasks> {
-  _TasksState();
-
+  final Stream<QuerySnapshot> _tasksStream;
+  Search(this.title, this._tasksStream, this.updateParent, {super.key});
   Widget taskListView() {
     return StreamBuilder<QuerySnapshot>(
-      stream: widget._tasksStream,
+      stream: _tasksStream,
       builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
         if (snapshot.hasError) {
           // print(snapshot.error);
@@ -65,7 +59,7 @@ class _TasksState extends State<Tasks> {
                         id,
                         data["done"],
                         context,
-                        widget.updateParent),
+                        updateParent),
                     const SizedBox(
                       height: 15,
                     )
@@ -79,14 +73,22 @@ class _TasksState extends State<Tasks> {
     );
   }
 
-  @override
   Widget build(BuildContext context) {
-    return Container(
-      height: double.infinity,
-      width: double.infinity,
-      color: const Color.fromARGB(255, 35, 39, 49),
-      child: Padding(
-          padding: const EdgeInsets.only(top: 10.0), child: taskListView()),
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color.fromARGB(255, 35, 39, 49),
+        title: Text(
+          "Search results for '$title'",
+        ),
+      ),
+      body: Container(
+          height: double.infinity,
+          width: double.infinity,
+          color: const Color.fromARGB(255, 35, 39, 49),
+          child: SafeArea(
+            child: Padding(
+                padding: const EdgeInsets.all(20.0), child: taskListView()),
+          )),
     );
   }
 }

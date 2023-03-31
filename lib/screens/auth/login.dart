@@ -1,10 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:taskoo/custom%20widgets/snackbar.dart';
 import 'package:taskoo/screens/auth/signup.dart';
 import 'package:taskoo/screens/home/mainHome.dart';
 
 class Login extends StatefulWidget {
+  const Login({super.key});
+
   @override
   State<Login> createState() => _LoginState();
 }
@@ -14,44 +16,7 @@ class _LoginState extends State<Login> {
   TextEditingController email = TextEditingController();
   TextEditingController password = TextEditingController();
 
-  snackBar(String msg, context) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      dismissDirection: DismissDirection.up,
-      duration: const Duration(seconds: 2),
-      content: Container(
-        margin:
-            EdgeInsets.only(bottom: MediaQuery.of(context).size.height - 195),
-        height: 100,
-        decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            color: const Color.fromARGB(255, 255, 93, 52)),
-        child: Padding(
-          padding: const EdgeInsets.all(15.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Opps..!",
-                style: TextStyle(fontSize: 20),
-              ),
-              const SizedBox(
-                height: 5,
-              ),
-              Text(
-                msg,
-                style: const TextStyle(fontSize: 18),
-              )
-            ],
-          ),
-        ),
-      ),
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: Colors.transparent,
-    ));
-  }
-
-  login() async {
+  void login() async {
     // show loading pop
     showDialog(
         context: context,
@@ -78,9 +43,9 @@ class _LoginState extends State<Login> {
       // pop the dialog
       Navigator.of(context).pop();
       if (e.code == 'user-not-found') {
-        snackBar("User Not Found", context);
+        snackbar("User Not Found", context);
       } else if (e.code == 'wrong-password') {
-        snackBar("Wrong Credentials", context);
+        snackbar("Wrong Credentials", context);
       }
     }
   }
